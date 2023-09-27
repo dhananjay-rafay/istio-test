@@ -6,11 +6,11 @@ on:
       aws_region:
         description: 'AWS Region'
         required: true
-      eks_cluster_name:
-        description: 'EKS Cluster Name'
-        required: true
+      kubernetes_version:
+        description: 'Target Kubernetes Version'
+        required: true        
       jump_host_instance_id:
-        description: 'ID of the Jump Host EC2 instance'
+        description: 'ID of the NOC Node EC2 instance'
         required: true
 
 jobs:
@@ -34,17 +34,6 @@ jobs:
         aws configure set region ${{ github.event.inputs.aws_region }}
       # Use the input value for AWS region
 
-    - name: Authenticate with EKS cluster
-      run: |
-        aws eks --region ${{ github.event.inputs.aws_region }} update-kubeconfig --name ${{ github.event.inputs.eks_cluster_name }}
-      # Use the input values for AWS region and EKS cluster name
-
     - name: Execute SSM Automation document on Jump Host
       run: |
-        aws ssm create-association --name "AWS-RunShellScript" --targets "Key=instanceids,Values=${{ github.event.inputs.jump_host_instance_id }}" --automation-target-parameter-name "InstanceIds" --parameters "commands=['kubectl get pods -A', 'kubectl get services -A']" --region ${{ github.event.inputs.aws_region }}
-        command_id=$(aws ssm list-commands --instance-id ${{ github.event.inputs.jump_host_instance_id }} --query 'Commands[0].CommandId' --output text --region ${{ github.event.inputs.aws_region }})
-        aws ssm list-command-invocations --instance-id ${{ github.event.inputs.jump_host_instance_id }}
-        aws ssm wait command-executed --instance-id ${{ github.event.inputs.jump_host_instance_id }} --command-id $command_id --region ${{ github.event.inputs.aws_region }}
-    - name: Clean up SSM Automation document
-      run: |
-        aws ssm delete-association --name "AWS-RunShellScript" --instance-id ${{ github.event.inputs.jump_host_instance_id }} --region ${{ github.event.inputs.aws_region }}
+        aws ssm start-session --target ${{ github.event.inputs.jump_host_instance_id }} --region ${{ github.event.inputs.aws_region }} --document-name AWS-StartInteractiveCommand --parameters "command='bash /home/ubuntu/dhananjay/test.sh'"
