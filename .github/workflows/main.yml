@@ -35,6 +35,11 @@ jobs:
       run: |
         aws eks --region ${{ github.event.inputs.aws_region }} update-kubeconfig --name ${{ github.event.inputs.eks_cluster_name }}
       # Use the input values for AWS region and EKS cluster name
+      
+    - name: Debug AWS configuration
+      run: |
+        aws configure list
+        cat ~/.kube/config  # Print the kubeconfig file
 
     - name: Run kubectl commands
       run: |
