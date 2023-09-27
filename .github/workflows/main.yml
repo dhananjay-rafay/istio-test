@@ -1,40 +1,75 @@
-name: Run kubectl commands via AWS SSM
+name: Configure kubectl and Run kubectl via Jump Host
 
 on:
   workflow_dispatch:
     inputs:
-      jump_host_instance_id:
-        description: 'ID of the Jump Host EC2 instance'
-        required: true
       aws_region:
         description: 'AWS Region'
         required: true
-      commands:
-        description: 'List of kubectl commands to run'
+      eks_cluster_name:
+        description: 'EKS Cluster Name'
+        required: true
+      jump_host_instance_id:
+        description: 'ID of the Jump Host EC2 instance'
         required: true
 
 jobs:
-  run-kubectl-commands:
+  configure-and-run-kubectl:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Install AWS CLI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y awscli
+      # You can modify this step based on the runner's OS if not using Ubuntu
+
     - name: Configure AWS credentials
       run: |
         aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws configure set region ${{ github.event.inputs.aws_region }}
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ github.event.inputs.aws_region }}
+      # Use the input value for AWS region
 
-    - name: Run kubectl commands via AWS SSM
+    #- name: Authenticate with EKS cluster
+      #run: |
+      #  aws eks --region ${{ github.event.inputs.aws_region }} update-kubeconfig --name ${{ github.event.inputs.eks_cluster_name }}
+      # Use the input values for AWS region and EKS cluster name
+
+    - name: Run kubectl commands via Jump Host
       run: |
-        # Start AWS SSM session
-        session_id=$(aws ssm start-session --target ${{ github.event.inputs.jump_host_instance_id }} --document-name AWS-StartInteractiveCommand --parameters "command=${{ github.event.inputs.commands }}" --query "SessionId" --output text)
+        # Run AWS SSM command on the Jump Host to execute kubectl
+        aws ssm create-document --name "kubectl-command" --document-type "Command" --document-format "YAML" --content '
+        schemaVersion: "2.2"
+        description: "Run kubectl commands"
+        mainSteps:
+          - action: "aws:runShellScript"
+            name: "runShellScript"
+            inputs:
+              runCommand:
+                - |
+                  #!/bin/bash
+                  set -e
 
-        # Wait for SSM session to complete
-        aws ssm wait session-terminated --session-id $session_id
+                  # Run your kubectl commands
+                  kubectl get pods -A
+                  kubectl get services -A
+                  # Replace <namespace> with the desired namespace for your kubectl commands
+                - exit 0
+        '
+
+        # Start SSM command execution on the Jump Host
+        execution_id=$(aws ssm create-association --name "kubectl-command" --instance-id ${{ github.event.inputs.jump_host_instance_id }} | jq -r '.AssociationDescription.ExecutionId')
+
+        # Wait for the SSM command execution to complete
+        aws ssm wait command-executed --instance-id ${{ github.event.inputs.jump_host_instance_id }} --instance-id ${{ github.event.inputs.jump_host_instance_id }} --command-id $execution_id
+
+        # Get the command output
+        aws ssm wait command-executed --instance-id ${{ github.event.inputs.jump_host_instance_id }} --instance-id ${{ github.event.inputs.jump_host_instance_id }} --command-id $execution_id
+
+        # Optionally, you can retrieve the command output if needed
+        aws ssm wait command-executed --instance-id ${{ github.event.inputs.jump_host_instance_id }} --instance-id ${{ github.event.inputs.jump_host_instance_id }} --command-id $execution_id --query 'CommandPlugins[0].Output' --output text
+      # Replace <namespace> with the desired namespace for your kubectl commands
