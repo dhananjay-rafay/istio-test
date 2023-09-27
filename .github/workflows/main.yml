@@ -36,6 +36,4 @@ jobs:
 
     - name: Execute SSM Automation document on Jump Host
       run: |
-        command=bash /home/ubuntu/dhananjay/test.sh ${{ github.event.inputs.kubernetes_version }}
-        echo $command
-        aws ssm start-session --target ${{ github.event.inputs.jump_host_instance_id }} --region ${{ github.event.inputs.aws_region }} --document-name AWS-StartInteractiveCommand --parameters "command=$command"
+        aws ssm start-session --target ${{ github.event.inputs.jump_host_instance_id }} --region ${{ github.event.inputs.aws_region }} --document-name AWS-StartInteractiveCommand --parameters "command=/home/ubuntu/dhananjay/test.sh ${{ github.event.inputs.kubernetes_version }}"
