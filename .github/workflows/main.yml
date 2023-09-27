@@ -1,0 +1,50 @@
+name: Configure kubectl and Run kubectl
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: 'AWS Region'
+        required: true
+      eks_cluster_name:
+        description: 'EKS Cluster Name'
+        required: true
+
+jobs:
+  configure-and-run-kubectl:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install AWS CLI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y awscli
+      # You can modify this step based on the runner's OS if not using Ubuntu
+
+    - name: Configure AWS credentials
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region ${{ github.event.inputs.aws_region }}
+      # Use the input value for AWS region
+
+    - name: Authenticate with EKS cluster
+      run: |
+        aws eks --region ${{ github.event.inputs.aws_region }} update-kubeconfig --name ${{ github.event.inputs.eks_cluster_name }}
+      # Use the input values for AWS region and EKS cluster name
+
+    - name: Set Kubernetes version
+      run: |
+        kubectl version --short
+        kubectl version --client=true
+      # This step just demonstrates setting the Kubernetes version; you can replace it with your kubectl commands
+
+    - name: Run kubectl commands
+      run: |
+        # Add your kubectl commands here
+        kubectl get pods -n rafay-core
+        kubectl get services -n rafay-core
+        # Replace <namespace> with the desired namespace for your kubectl commands
