@@ -41,8 +41,9 @@ jobs:
 
     - name: Execute SSM Automation document on Jump Host
       run: |
-        aws ssm create-association --name "AWS-RunShellScript" --targets "Key=instanceids,Values=${{ github.event.inputs.jump_host_instance_id }}" --automation-target-parameter-name "InstanceIds" --parameters "commands=['curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl', 'chmod +x kubectl', 'sudo mv kubectl /usr/local/bin/', 'kubectl get pods -n <namespace>', 'kubectl get services -n <namespace>']" --region ${{ github.event.inputs.aws_region }}
+        aws ssm create-association --name "AWS-RunShellScript" --targets "Key=instanceids,Values=${{ github.event.inputs.jump_host_instance_id }}" --automation-target-parameter-name "InstanceIds" --parameters "commands=['kubectl get pods -A', 'kubectl get services -A']" --region ${{ github.event.inputs.aws_region }}
         command_id=$(aws ssm list-commands --instance-id ${{ github.event.inputs.jump_host_instance_id }} --query 'Commands[0].CommandId' --output text --region ${{ github.event.inputs.aws_region }})
+        aws ssm list-command-invocations --instance-id ${{ github.event.inputs.jump_host_instance_id }}
         aws ssm wait command-executed --instance-id ${{ github.event.inputs.jump_host_instance_id }} --command-id $command_id --region ${{ github.event.inputs.aws_region }}
     - name: Clean up SSM Automation document
       run: |
