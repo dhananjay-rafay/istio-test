@@ -36,12 +36,6 @@ jobs:
         aws eks --region ${{ github.event.inputs.aws_region }} update-kubeconfig --name ${{ github.event.inputs.eks_cluster_name }}
       # Use the input values for AWS region and EKS cluster name
 
-    - name: Set Kubernetes version
-      run: |
-        kubectl version
-        kubectl version --client=true
-      # This step just demonstrates setting the Kubernetes version; you can replace it with your kubectl commands
-
     - name: Run kubectl commands
       run: |
         # Add your kubectl commands here
