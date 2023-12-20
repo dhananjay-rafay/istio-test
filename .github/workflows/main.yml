@@ -2,6 +2,8 @@ name: Configure kubectl and Run kubectl via Jump Host
 
 on:
   workflow_dispatch:
+    branches:
+      - test
     inputs:
       aws_region:
         description: 'AWS Region'
