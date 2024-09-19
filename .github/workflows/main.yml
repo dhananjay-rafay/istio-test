@@ -1,0 +1,28 @@
+name: Commit Message Linter
+
+on:
+  push:
+    branches:
+      - '**'  # Run on all branches
+
+jobs:
+  lint-commit-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check commit messages
+        run: |
+          # Get the commit messages
+          commit_messages=$(git log --format=%B -n 1 ${{ github.event.before }}..${{ github.sha }})
+
+          # Check for 'RC-*' pattern in commit messages
+          if ! echo "$commit_messages" | grep -q 'RC-'; then
+            echo "❌ Commit message does not contain 'RC-*' pattern"
+            exit 1
+          fi
+
+      - name: Success message
+        if: success()
+        run: echo "✅ Commit message contains 'RC-*'"
