@@ -12,10 +12,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Get commit range
+        id: commit_range
+        run: |
+          # Get the range of commits for this push
+          before_sha="${{ github.event.before }}"
+          after_sha="${{ github.sha }}"
+
+          # In case this is the first commit on a branch (before will be all zeroes), only check the latest commit
+          if [ "$before_sha" = "0000000000000000000000000000000000000000" ]; then
+            echo "::set-output name=commit_range::${after_sha}"
+          else
+            echo "::set-output name=commit_range::${before_sha}..${after_sha}"
+          fi
+
       - name: Check commit messages
         run: |
-          # Get the commit messages
-          commit_messages=$(git log --format=%B -n 1 ${{ github.event.before }}..${{ github.sha }})
+          # Get the commit messages in the given range
+          commit_messages=$(git log --format=%B ${{ steps.commit_range.outputs.commit_range }})
 
           # Check for 'RC-*' pattern in commit messages
           if ! echo "$commit_messages" | grep -q 'RC-'; then
